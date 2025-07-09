@@ -1,6 +1,7 @@
 #Обработчики для работы бота в группах
 from string import punctuation
 from aiogram import F, types, Router
+
 from filters.chat_types import ChatTypeFilter
 
 user_group_router = Router()
