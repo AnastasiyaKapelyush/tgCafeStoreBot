@@ -1,5 +1,5 @@
 from aiogram.filters import Filter
-from aiogram import types
+from aiogram import Bot, types
 
 class ChatTypeFilter(Filter):
     def __init__(self, chat_types: list[str]) -> None:
@@ -7,3 +7,12 @@ class ChatTypeFilter(Filter):
 
     async def __call__(self, message: types.Message) -> bool:
         return message.chat.type in self.chat_types
+    
+class IsAdmin(Filter):
+    def __init__(self) -> None:
+        pass
+
+    async def __call__(self, message: types.Message, bot: Bot) -> bool:
+        #Админы группы - администраторы бота (бот состоит только в одной группе конкретного магазина)
+        return message.from_user.id in bot.my_admins_list
+    
