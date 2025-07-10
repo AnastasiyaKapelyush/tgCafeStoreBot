@@ -78,14 +78,14 @@ async def back_step_handler(message: types.Message, state: FSMContext) -> None:
     current_state = await state.get_state()
 
     if current_state == AddProduct.name:
-        await message.answer('Предидущего шага нет, или введите название товара или напишите "отмена"')
+        await message.answer('Предыдущего шага нет, или введите название товара или напишите "отмена"')
         return
 
     previous = None
     for step in AddProduct.__all_states__:
         if step.state == current_state:
             await state.set_state(previous)
-            await message.answer(f"Ок, вы вернулись к прошлому шагу \n {AddProduct.texts[previous.state]}")
+            await message.answer(f"Ок, вы вернулись к прошлому шагу \n{AddProduct.texts[previous.state]}")
             return
         previous = step
 
@@ -93,9 +93,7 @@ async def back_step_handler(message: types.Message, state: FSMContext) -> None:
 #Ловим данные для состояние name и потом меняем состояние на description
 @admin_router.message(AddProduct.name, F.text)
 async def add_name(message: types.Message, state: FSMContext):
-    # Здесь можно сделать какую либо дополнительную проверку
-    #и выйти из хендлера не меняя состояние с отправкой соответствующего сообщения
-    #например:
+    #Дополнительная проверка и выход из хендлера не меняя состояние
     if len(message.text) >= 100:
         await message.answer("Название товара не должно превышать 100 символов. \n Введите заново")
         return
@@ -107,7 +105,7 @@ async def add_name(message: types.Message, state: FSMContext):
 #Хендлер для отлова некорректных вводов для состояния name
 @admin_router.message(AddProduct.name)
 async def add_name2(message: types.Message, state: FSMContext):
-    await message.answer("Вы ввели не допустимые данные, введите текст названия товара")
+    await message.answer("Вы ввели недопустимые данные, введите текст названия товара")
 
 
 
@@ -121,7 +119,7 @@ async def add_description(message: types.Message, state: FSMContext):
 #Хендлер для отлова некорректных вводов для состояния description
 @admin_router.message(AddProduct.description)
 async def add_description2(message: types.Message, state: FSMContext):
-    await message.answer("Вы ввели не допустимые данные, введите текст описания товара")
+    await message.answer("Вы ввели недопустимые данные, введите текст описания товара")
 
 
 
@@ -141,7 +139,7 @@ async def add_price(message: types.Message, state: FSMContext):
 #Хендлер для отлова некорректных ввода для состояния price
 @admin_router.message(AddProduct.price)
 async def add_price2(message: types.Message, state: FSMContext):
-    await message.answer("Вы ввели не допустимые данные, введите стоимость товара")
+    await message.answer("Вы ввели недопустимые данные, введите стоимость товара")
 
 
 
