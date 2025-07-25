@@ -1,61 +1,55 @@
 # Обработчики событий общения пользователя с ботом в личке
 from aiogram import F, types, Router
-from aiogram.filters import CommandStart, Command, or_f
-from aiogram.utils.formatting import as_list, as_marked_section, Bold
-from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.filters import CommandStart
 
-from database.orm_query import orm_get_products
+from sqlalchemy.ext.asyncio import AsyncSession
+from database.orm_query import orm_add_to_cart, orm_add_user
+
 from filters.chat_types import ChatTypeFilter
-from keyboards import reply
+from handlers.menu_processing import get_menu_content
+from keyboards.inline import MenuCallBack
+
 
 user_private_router = Router()
-user_private_router.message.filter(ChatTypeFilter({'private'}))
+user_private_router.message.filter(ChatTypeFilter(["private"]))
+
 
 @user_private_router.message(CommandStart())
-async def start_cmd(message: types.Message):
-    await message.answer('Привет, я виртуальный помощник', reply_markup=reply.start_kb)
+async def start_cmd(message: types.Message, session: AsyncSession):
+    media, reply_markup = await get_menu_content(session, level=0, menu_name="main")
 
-@user_private_router.message(or_f(Command('menu'), F.text.lower().contains('меню')))
-async def menu_cmd(message: types.Message, session: AsyncSession):
-    for product in await orm_get_products(session):
-        await message.answer_photo(
-            product.image,
-            caption=f"<strong>{product.name}\
-                    </strong>\n{product.description}\nСтоимость: {round(product.price, 2)}",
-        )
-    await message.answer("Вот меню:")
+    await message.answer_photo(media.media, caption=media.caption, reply_markup=reply_markup)
 
-@user_private_router.message(or_f(Command('about'), F.text.lower().contains('о магазине')))
-async def about_cmd(message: types.Message):
-    await message.answer("О нас:", reply_markup=reply.remove_kb)
 
-@user_private_router.message(or_f(Command('payments'), F.text.lower().contains('оплат')))
-async def payment_cmd(message: types.Message):
-    text = as_marked_section(
-        Bold("Варианты оплаты:"),
-        "Онлайн в боте",
-        "Картой при получении",
-        "Наличными при получении",
-        "В заведении",
-        marker="✅ "
+async def add_to_cart(callback: types.CallbackQuery, callback_data: MenuCallBack, session: AsyncSession):
+    user = callback.from_user
+    await orm_add_user(
+        session,
+        user_id=user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        phone=None,
     )
-    await message.answer(text.as_html(), reply_markup=reply.remove_kb)
+    await orm_add_to_cart(session, user_id=user.id, product_id=callback_data.product_id)
+    await callback.answer("Товар добавлен в корзину.")
 
-@user_private_router.message(or_f(Command('shipping'), F.text.lower().contains('доставк')))
-async def shipping_cmd(message: types.Message):
-    text = as_list(
-        as_marked_section(
-            Bold("Варианты доставки:"),
-            "Самовывоз",
-            "Курьерская доставка",
-            marker="✅ "
-        ),
-        as_marked_section(
-            Bold("Невозможно:"),
-            "Почтой", 
-            "Голубями",
-            marker="❌ "
-        ),
-        sep="\n \n"
+
+@user_private_router.callback_query(MenuCallBack.filter())
+async def user_menu(callback: types.CallbackQuery, callback_data: MenuCallBack, session: AsyncSession):
+
+    if callback_data.menu_name == "add_to_cart":
+        await add_to_cart(callback, callback_data, session)
+        return
+
+    media, reply_markup = await get_menu_content(
+        session,
+        level=callback_data.level,
+        menu_name=callback_data.menu_name,
+        category=callback_data.category,
+        page=callback_data.page,
+        product_id=callback_data.product_id,
+        user_id=callback.from_user.id,
     )
-    await message.answer(text.as_html(), reply_markup=reply.remove_kb)
+
+    await callback.message.edit_media(media=media, reply_markup=reply_markup)
+    await callback.answer()
